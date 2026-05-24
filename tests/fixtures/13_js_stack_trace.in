@@ -1,0 +1,4 @@
+Error: thing failed
+    at doIt (app.js:12:34)
+    at main (app.js:5:1)
+    at Object.<anonymous> (app.js:1:1)

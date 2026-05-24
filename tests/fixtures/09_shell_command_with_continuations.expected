@@ -1,0 +1,8 @@
+Here is a multi-line command that uses continuations.
+
+npm install \
+  --save-dev \
+  --legacy-peer-deps \
+  some-package
+
+Done.

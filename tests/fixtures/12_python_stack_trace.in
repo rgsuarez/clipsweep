@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "main.py", line 42, in <module>
+    do_work()
+  File "main.py", line 17, in do_work
+    raise RuntimeError("nope")
+RuntimeError: nope

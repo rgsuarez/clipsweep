@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+
+# IDE state
+.vscode/
+.idea/
+
+# Lua build artifacts (none expected, but reserve the spot)
+*.luac

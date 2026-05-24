@@ -1,0 +1,8 @@
+It works. End-to-end verified:
+
+- Test harness 29/29 PASS
+- Hotkey transform end-to-end verified
+- Hotkey restore end-to-end verified
+- Persistent install confirmed
+
+Use it.

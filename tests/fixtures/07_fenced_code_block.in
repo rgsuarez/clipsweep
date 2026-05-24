@@ -1,0 +1,12 @@
+Setup text wrapped
+across two lines.
+
+```python
+def hello():
+    print("hi there")
+    # comment that is wrapped
+    # to a second line within code
+```
+
+After the code, more wrapped
+text continues here.
