@@ -49,12 +49,15 @@ do
 
     local line_delta = count_lines(current) - count_lines(cleaned)
     local char_delta = #current - #cleaned
-    local sign = function(n) return n >= 0 and "-" or "+" end
+    -- Positive delta means content shrank (cleanup removed lines/chars), shown as "-N".
+    -- Negative delta means content grew, shown as "+N".
+    local function format_delta(n)
+      if n >= 0 then return "-" .. n else return "+" .. (-n) end
+    end
     hs.alert.show(
       string.format(
-        "clipsweep: %s%d lines, %s%d chars",
-        sign(line_delta), math.abs(line_delta),
-        sign(char_delta), math.abs(char_delta)
+        "clipsweep: %s lines, %s chars",
+        format_delta(line_delta), format_delta(char_delta)
       ),
       0.8
     )
