@@ -4,11 +4,11 @@ This directory contains the fixture harness and the test fixtures.
 
 ## Layout
 
-- `run.lua` — entry point. Sets up paths and invokes `test_clipsweep.run_all()`.
-- `test_clipsweep.lua` — fixture iterator. Reads each `NN_name.in` / `NN_name.expected` pair, runs `clipsweep.clean()`, byte-compares the result.
-- `fixtures/NN_name.in` — input bytes for fixture `NN_name`.
-- `fixtures/NN_name.expected` — expected output bytes.
-- `fixtures/NN_name.opts` — (optional) one `key=value` per line for non-default options. Falls back to `FIXTURE_OPTS` in `test_clipsweep.lua` for backward compatibility.
+- `run.lua`: entry point. Sets up paths and invokes `test_clipsweep.run_all()`.
+- `test_clipsweep.lua`: fixture iterator. Reads each `NN_name.in` / `NN_name.expected` pair, runs `clipsweep.clean()`, byte-compares the result.
+- `fixtures/NN_name.in`: input bytes for fixture `NN_name`.
+- `fixtures/NN_name.expected`: expected output bytes.
+- `fixtures/NN_name.opts`: (optional) one `key=value` per line for non-default options. Falls back to `FIXTURE_OPTS` in `test_clipsweep.lua` for backward compatibility.
 
 ## Invocation
 

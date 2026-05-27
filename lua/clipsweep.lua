@@ -1,4 +1,4 @@
--- clipsweep v0.1.0
+-- clipsweep v0.2.0
 -- Pure-Lua clipboard cleanup transformer.
 -- Unwraps cosmetic terminal-wrap line breaks; dedents 1-3 space gutters;
 -- preserves Markdown, code, diff, log, stack-trace, table, URL, and CJK

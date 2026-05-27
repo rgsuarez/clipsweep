@@ -1,17 +1,29 @@
 # clipsweep
 
-A one-hotkey macOS clipboard cleanup tool. Reads the current clipboard, strips cosmetic line breaks that terminal apps inject when they wrap text to column width, preserves real structure (Markdown, code, logs, diffs, stack traces, tables, URLs, CJK), optionally converts em-dashes and en-dashes to ASCII hyphens, and writes the cleaned text back to the clipboard. A second hotkey restores the previous clipboard contents (one level of undo).
+One-hotkey macOS clipboard cleanup: unwraps terminal-wrapped text while preserving Markdown, code, logs, diffs, tables, URLs, and CJK.
+
+[![tests](https://github.com/rgsuarez/clipsweep/actions/workflows/test.yml/badge.svg)](https://github.com/rgsuarez/clipsweep/actions/workflows/test.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![release](https://img.shields.io/github/v/release/rgsuarez/clipsweep?sort=semver)](https://github.com/rgsuarez/clipsweep/releases)
+
+## Motivation
+
+Terminal-rendered output (agent CLIs, log tails, `man` pages, paged tools) wraps at the column width of the terminal. Pasting that text into a chat client, a doc, a ticket, or another tool brings the cosmetic wrap with it: every paragraph arrives as a stack of hard-broken short lines, often with a 2-space gutter. Plain hand-cleanup is tedious and easy to get wrong on structured content (Markdown, code fences, diffs, stack traces).
+
+`clipsweep` solves this with one hotkey. It joins prose lines that were only broken for terminal width, leaves real structure alone (Markdown, code blocks, diffs, log lines, stack frames, tables, URLs, CJK), and writes the cleaned text back to the clipboard. A second hotkey restores the pre-transform clipboard as a one-level undo.
 
 Pure-Lua transformer module, loaded by Hammerspoon. No external dependencies. No app to maintain.
 
 ## Status
 
-v0.1.0, local-only.
+v0.2.0, local-only.
 
 ## Requirements
 
 - macOS with Hammerspoon installed (`/Applications/Hammerspoon.app`).
-- That is the entire dependency footprint.
+- That is the entire dependency footprint at runtime.
+
+For developing and running tests off-device: optional Lua 5.3 or 5.4 (`brew install lua` on macOS, `apt install lua5.4` on Debian/Ubuntu).
 
 ## Install
 
@@ -43,6 +55,8 @@ The default config is conservative:
 | `collapse_blank_lines`| true    | collapse runs of 3+ blank lines to 1 blank line   |
 | `convert_dashes`      | false   | convert U+2014 / U+2013 to ASCII hyphen           |
 
+Plus an unconditional Pass 0 that folds CRLF and bare CR to LF (no flag; always on).
+
 To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoon/snippet.lua` and pass an `opts` table.
 
 ## What it preserves
@@ -56,8 +70,10 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 - Log lines (ISO timestamps, `[INFO]`/`[ERROR]` shapes, syslog).
 - Diff hunks (`@@`, `+++`, `---`, `+`/`-`/space inside a hunk).
 - Stack frames (Python `File "..."`, JS `at fn (...)`, Go `file.go:N`, Rust numbered frames, `Traceback`, `panic:`).
+- Exception-class headers (`ValueError:`, `RuntimeError:`, `NullPointerException:`, `DeprecationWarning:`, `MyApp.ParseError:`, Node-style bare `Error:`).
 - TSV/tabular data (lines with 2+ tabs).
-- Short single-word lines (under 40 chars, no spaces).
+- Short single-word lines (under 40 chars, no spaces, ASCII).
+- Table cell-wrap continuation lines (a non-`|` line immediately after a `|` row is preserved verbatim; mode resets on blank line).
 
 ## What it cleans
 
@@ -67,13 +83,16 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 - CJK text at the wrap boundary: joined without space (no inter-word space convention).
 - Trailing whitespace per line.
 - Runs of 3+ blank lines collapsed to 1 blank line between content.
+- CRLF and bare CR line endings folded to LF (unconditional Pass 0).
 
 ## Limitations
 
 - Heuristic, not perfect. The restore hotkey is the safety net.
 - One level of undo only.
 - URL detection is best-effort; some edge cases (URL ending at end of a sentence with no terminal punctuation) may join incorrectly.
-- v1 does not normalize smart quotes or other Unicode punctuation.
+- v1 does not normalize smart quotes or other Unicode punctuation. UTF-8 BOM is preserved as-is.
+- Java-style lowercase-prefix exception FQNs (`java.lang.NullPointerException`) are not matched by the exception-class preserve.
+- A paragraph that immediately follows a Markdown table without a blank-line separator (CommonMark violation but common) is preserved as cell-wrap continuation, not joined.
 
 ## Layout
 
@@ -82,30 +101,60 @@ clipsweep/
 |-- README.md
 |-- LICENSE
 |-- CHANGELOG.md
+|-- CONTRIBUTING.md
+|-- CODE_OF_CONDUCT.md
+|-- SECURITY.md
+|-- .gitattributes
 |-- .gitignore
 |-- .editorconfig
+|-- .luacheckrc
+|-- .github/
+|   |-- workflows/test.yml
+|   |-- ISSUE_TEMPLATE/{bug_report.md,config.yml}
+|   `-- PULL_REQUEST_TEMPLATE.md
 |-- lua/clipsweep.lua            # core transformer
 |-- hammerspoon/snippet.lua      # paste this into ~/.hammerspoon/init.lua
 |-- tests/
-|   |-- run.lua                  # Hammerspoon-Console-loadable entry
+|   |-- README.md                # test harness reference
+|   |-- run.lua                  # entry point
 |   |-- test_clipsweep.lua       # fixture iterator
-|   `-- fixtures/                # 27 paired NN_name.in / NN_name.expected files
+|   `-- fixtures/                # paired NN_name.in / NN_name.expected files
 `-- docs/rules.md                # full heuristic spec
 ```
 
 ## Test
 
-After cloning to `~/projects/clipsweep/`, in the Hammerspoon Console:
+Two invocation paths, same fixture suite:
 
-```lua
+```bash
+# Command-line (CI-equivalent; non-zero exit on failure):
+lua tests/run.lua
+
+# Hammerspoon Console (interactive iteration):
 dofile(os.getenv("HOME") .. "/projects/clipsweep/tests/run.lua")
 ```
 
-Expected output: `clipsweep tests: 30/30 PASS`.
+Or from a shell with the Hammerspoon CLI installed:
+
+```bash
+hs -c "dofile(os.getenv('HOME') .. '/projects/clipsweep/tests/run.lua')"
+```
+
+Expected output: `clipsweep tests: 53/53 PASS`.
+
+See `tests/README.md` for the fixture format reference and `CONTRIBUTING.md` for the walkthrough on adding a fixture.
 
 ## Uninstall
 
 Remove the marked region from `~/.hammerspoon/init.lua` (between `-- BEGIN clipsweep` and `-- END clipsweep`). Optional: `rm -rf ~/projects/clipsweep/`.
+
+## Contributing
+
+See `CONTRIBUTING.md` for dev setup, fixture conventions, branch and commit conventions, and the pull request checklist. Behavior changes need a fixture pair, a `docs/rules.md` entry, and a `CHANGELOG.md [Unreleased]` line.
+
+## Security
+
+See `SECURITY.md`. To report a vulnerability, open a private security advisory at https://github.com/rgsuarez/clipsweep/security/advisories/new.
 
 ## License
 

@@ -37,9 +37,9 @@ The Hammerspoon path is convenient when you are also iterating on `hammerspoon/s
 
 Each test fixture is a pair (with an optional sibling) under `tests/fixtures/`:
 
-- `NN_short_name.in` — input bytes. Treated as binary; encode exact line endings, BOM, trailing-newline state.
-- `NN_short_name.expected` — expected output bytes.
-- `NN_short_name.opts` (optional) — one `key=value` per line for non-default options, e.g. `convert_dashes=true`. Falls back to the hand-maintained `FIXTURE_OPTS` map in `tests/test_clipsweep.lua`.
+- `NN_short_name.in`: input bytes. Treated as binary; encode exact line endings, BOM, trailing-newline state.
+- `NN_short_name.expected`: expected output bytes.
+- `NN_short_name.opts` (optional): one `key=value` per line for non-default options, e.g. `convert_dashes=true`. Falls back to the hand-maintained `FIXTURE_OPTS` map in `tests/test_clipsweep.lua`.
 
 The harness reads both files in binary mode and does byte-exact comparison. CRLF, BOM, lone CR, and no-trailing-newline are all distinct valid cases.
 
