@@ -83,6 +83,10 @@ do
       return
     end
     hs.pasteboard.setContents(_G.clipsweep_state.previous_clipboard)
+    -- Clear after a successful restore so a second press reports
+    -- "nothing to restore" instead of stomping a fresh copy the user
+    -- has made between the two presses.
+    _G.clipsweep_state.previous_clipboard = nil
     hs.alert.show("clipsweep: restored", 0.8)
   end
 
