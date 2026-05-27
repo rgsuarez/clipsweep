@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua and luarocks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 luarocks
+
+      - name: Install luacheck
+        run: sudo luarocks install luacheck
+
+      - name: Lint with luacheck
+        run: luacheck lua/ hammerspoon/ tests/
+
+      - name: Run tests
+        run: lua5.4 tests/run.lua
