@@ -387,6 +387,12 @@ function M.clean(text, opts)
     return text or ""
   end
 
+  -- Pass 0: normalize line endings up front. CRLF and bare CR fold to LF.
+  -- Unconditional (no opt-out flag). Output is always LF-only. This runs
+  -- before all flag-gated passes so downstream logic never has to consider
+  -- \r as a line break or as trailing whitespace.
+  text = text:gsub("\r\n", "\n"):gsub("\r", "\n")
+
   local cfg = {}
   for k, v in pairs(M.defaults) do
     cfg[k] = v

@@ -4,10 +4,11 @@ This document describes every transformation rule applied by `lua/clipsweep.lua`
 
 ## Pass order
 
-Passes run in this fixed order. Each behavior-changing pass is independently gated by an `opts` flag.
+Passes run in this fixed order. Pass 0 is unconditional; every other pass is independently gated by an `opts` flag.
 
 | order | pass                       | flag                   | default |
 |-------|----------------------------|------------------------|---------|
+| 0     | normalize_line_endings     | (unconditional)        | always  |
 | 1     | strip_trailing_ws_pass     | `strip_trailing_ws`    | true    |
 | 2     | strip_gutter_pass          | `strip_gutter`         | true    |
 | 3     | join_wraps_pass            | `join_wraps`           | true    |
@@ -15,6 +16,18 @@ Passes run in this fixed order. Each behavior-changing pass is independently gat
 | 5     | collapse_blank_lines_pass  | `collapse_blank_lines` | true    |
 
 The trailing-newline count of the input is preserved across all passes. Passes never synthesize a trailing `\n`; the collapse pass may reduce 3+ trailing blank lines, but cannot turn a non-newline-terminated input into a newline-terminated one.
+
+## Pass 0: normalize_line_endings
+
+CRLF (`\r\n`) and bare CR (`\r`) sequences fold to LF (`\n`). Unconditional; no opt-out flag. Output is always LF-only. This runs before every other pass so downstream logic never has to consider `\r` as a line break or as trailing whitespace.
+
+Example:
+
+```
+"foo\r\nbar\r\n"  ->  "foo\nbar\n"
+```
+
+Rationale: macOS clipboards commonly receive CRLF content from Windows tools and from web sources. Without normalization the join pass would inject a space between `foo\r` and `bar`, leaving a stray `\r` mid-line in the cleaned output.
 
 ## Pass 1: strip_trailing_ws
 
