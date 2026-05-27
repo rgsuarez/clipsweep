@@ -1,0 +1,5 @@
+| header a | header b |
+| -------- | -------- |
+| cell one | cell two |
+
+This paragraph follows the table and wraps across two lines.
