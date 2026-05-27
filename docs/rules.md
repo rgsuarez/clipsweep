@@ -84,6 +84,7 @@ Inside an active join, the next candidate line (lineB) breaks the join if any of
 
 - lineB is blank.
 - The accumulator (the line being built) ends with a shell continuation (`\`, `&&`, `||`, `|`, `;`).
+- The accumulator ends with an unbalanced open `(` or `[` (open count > close count). Wrapped Markdown link or image syntax like `[label](\nhttps://...)` then keeps its line break instead of getting a space injected inside the parens. Conservative: over-preserves on prose with literal unbalanced parens; never under-preserves.
 - lineB itself triggers any of the block-all-joins rules above.
 - Both the accumulator and lineB contain 2 or more tab characters (TSV / tabular data).
 

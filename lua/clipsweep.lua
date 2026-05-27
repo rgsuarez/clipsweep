@@ -110,6 +110,22 @@ local function ends_shell_continuation(line)
   return false
 end
 
+-- True if `line` ends with an unbalanced open `(` or `[` (open count > close
+-- count). Used as a per-iteration breaker so wrapped Markdown link/image
+-- syntax like `[label](\nhttps://...)` does not get a space injected inside
+-- the parens. Conservative: over-preserves on prose with literal unbalanced
+-- parens; never under-preserves (never injects a corruption).
+local function ends_unbalanced_open_bracket(line)
+  local open_paren = 0
+  for _ in line:gmatch("%(") do open_paren = open_paren + 1 end
+  for _ in line:gmatch("%)") do open_paren = open_paren - 1 end
+  if open_paren > 0 then return true end
+  local open_brack = 0
+  for _ in line:gmatch("%[") do open_brack = open_brack + 1 end
+  for _ in line:gmatch("%]") do open_brack = open_brack - 1 end
+  return open_brack > 0
+end
+
 local function ends_hyphen_word(line)
   if #line < 2 then return false end
   return line:sub(-1) == "-"
@@ -310,6 +326,7 @@ local function join_wraps_pass(text)
       local lineB = lines[j]
       if is_blank(lineB) then break end
       if ends_shell_continuation(acc) then break end
+      if ends_unbalanced_open_bracket(acc) then break end
       if should_preserve_before(lineB, in_diff) then break end
       if has_two_plus_tabs(acc) and has_two_plus_tabs(lineB) then break end
 
