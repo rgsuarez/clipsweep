@@ -21,7 +21,12 @@ do
     return
   end
 
-  local previous_clipboard = nil
+  -- Stash undo state on a process global so a pathwatcher-triggered re-eval
+  -- of init.lua (which re-enters this do-block) does not nuke one level of
+  -- undo. The idempotent-init idiom preserves any existing state across
+  -- reloads. A true hs.reload() tears down the Lua state entirely and the
+  -- global is destroyed with it; that is the intended reset path.
+  _G.clipsweep_state = _G.clipsweep_state or { previous_clipboard = nil }
 
   local function count_lines(s)
     if not s or s == "" then return 0 end
@@ -37,7 +42,7 @@ do
       return
     end
 
-    previous_clipboard = current
+    _G.clipsweep_state.previous_clipboard = current
     local ok, cleaned = pcall(clipsweep.clean, current)
     if not ok then
       -- pcall returns false + error message on a Lua error inside clean().
@@ -45,7 +50,7 @@ do
       -- undo stash so a subsequent restore does not write current back as if
       -- the transform had succeeded.
       hs.alert.show("clipsweep: error (" .. tostring(cleaned) .. ")", 2.5)
-      previous_clipboard = nil
+      _G.clipsweep_state.previous_clipboard = nil
       return
     end
 
@@ -73,11 +78,11 @@ do
   end
 
   local function restore()
-    if previous_clipboard == nil then
+    if _G.clipsweep_state.previous_clipboard == nil then
       hs.alert.show("clipsweep: nothing to restore", 0.8)
       return
     end
-    hs.pasteboard.setContents(previous_clipboard)
+    hs.pasteboard.setContents(_G.clipsweep_state.previous_clipboard)
     hs.alert.show("clipsweep: restored", 0.8)
   end
 
