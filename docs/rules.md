@@ -75,6 +75,7 @@ If the line currently being inspected starts a paragraph and matches ANY of thes
 - Shell prompt mimic (`$ `).
 - Log line: `[YYYY-...`, ISO `YYYY-MM-DD`, syslog `Mon Jan 1 12:34:56`, bracketed level `[DEBUG]`, level prefix `INFO:`, `[PID]`.
 - Stack frame: ` at fn (`, ` File "`, ` foo.go:N`, numbered Rust frame ` 0:`, `panic:`, `Traceback`.
+- Exception-class header at column 0: `ClassName(Error|Exception|Warning|Fault):` (case-tolerant on the Error/error half-pair). Matches `ValueError:`, `RuntimeError:`, `NullPointerException:`, `DeprecationWarning:`, `MyApp.ParseError:`, and the Node-style bare `Error:` / `Exception:`. Java-style lowercase-prefix FQNs (`java.lang.NullPointerException`) are not matched; that is a known limitation.
 - Diff hunk / header: `+++`, `---`, `@@`, or any leading `+`/`-`/` ` while inside an active diff hunk.
 - Short single-word line (length < 40 chars, no spaces, ASCII only). Non-ASCII single-word lines do not trigger this preserve; the CJK separator rule handles those at the join boundary instead.
 

@@ -189,6 +189,23 @@ local function looks_like_stack_frame(line)
   return false
 end
 
+-- Matches a bare exception-class header at column 0, e.g. "ValueError: x",
+-- "RuntimeError: nope", "NullPointerException:", "DeprecationWarning: ...",
+-- "MyApp.ParseError: ...", and the Node-style bare "Error: ENOENT...".
+-- Used to keep these lines from being joined into following prose.
+-- Java-style lowercase-prefix FQNs ("java.lang.NullPointerException") are a
+-- known limitation: the leading lowercase fails the [A-Z] anchor here.
+local function looks_like_exception_class(line)
+  if line:match("^[A-Z][%w_%.]*[eE]rror:") then return true end
+  if line:match("^[A-Z][%w_%.]*[eE]xception:") then return true end
+  if line:match("^[A-Z][%w_%.]*[wW]arning:") then return true end
+  if line:match("^[A-Z][%w_%.]*[fF]ault:") then return true end
+  -- Bare forms (Node.js style).
+  if line:match("^Error:%s") then return true end
+  if line:match("^Exception:%s") then return true end
+  return false
+end
+
 local function looks_like_diff_marker(line, in_diff)
   if line:sub(1, 3) == "+++" then return true end
   if line:sub(1, 3) == "---" then return true end
@@ -216,6 +233,7 @@ local function should_preserve_before(line, in_diff)
   if line:sub(1, 2) == "$ " then return true end
   if looks_like_log(line) then return true end
   if looks_like_stack_frame(line) then return true end
+  if looks_like_exception_class(line) then return true end
   return false
 end
 

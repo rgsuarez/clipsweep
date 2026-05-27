@@ -1,0 +1,2 @@
+ValueError: x was the wrong type
+This is a separate sentence that should not be joined into the error.
