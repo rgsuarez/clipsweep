@@ -1,4 +1,4 @@
--- clipsweep v0.1.0
+-- clipsweep v0.2.0
 -- Pure-Lua clipboard cleanup transformer.
 -- Unwraps cosmetic terminal-wrap line breaks; dedents 1-3 space gutters;
 -- preserves Markdown, code, diff, log, stack-trace, table, URL, and CJK
@@ -110,6 +110,22 @@ local function ends_shell_continuation(line)
   return false
 end
 
+-- True if `line` ends with an unbalanced open `(` or `[` (open count > close
+-- count). Used as a per-iteration breaker so wrapped Markdown link/image
+-- syntax like `[label](\nhttps://...)` does not get a space injected inside
+-- the parens. Conservative: over-preserves on prose with literal unbalanced
+-- parens; never under-preserves (never injects a corruption).
+local function ends_unbalanced_open_bracket(line)
+  local open_paren = 0
+  for _ in line:gmatch("%(") do open_paren = open_paren + 1 end
+  for _ in line:gmatch("%)") do open_paren = open_paren - 1 end
+  if open_paren > 0 then return true end
+  local open_brack = 0
+  for _ in line:gmatch("%[") do open_brack = open_brack + 1 end
+  for _ in line:gmatch("%]") do open_brack = open_brack - 1 end
+  return open_brack > 0
+end
+
 local function ends_hyphen_word(line)
   if #line < 2 then return false end
   return line:sub(-1) == "-"
@@ -173,6 +189,23 @@ local function looks_like_stack_frame(line)
   return false
 end
 
+-- Matches a bare exception-class header at column 0, e.g. "ValueError: x",
+-- "RuntimeError: nope", "NullPointerException:", "DeprecationWarning: ...",
+-- "MyApp.ParseError: ...", and the Node-style bare "Error: ENOENT...".
+-- Used to keep these lines from being joined into following prose.
+-- Java-style lowercase-prefix FQNs ("java.lang.NullPointerException") are a
+-- known limitation: the leading lowercase fails the [A-Z] anchor here.
+local function looks_like_exception_class(line)
+  if line:match("^[A-Z][%w_%.]*[eE]rror:") then return true end
+  if line:match("^[A-Z][%w_%.]*[eE]xception:") then return true end
+  if line:match("^[A-Z][%w_%.]*[wW]arning:") then return true end
+  if line:match("^[A-Z][%w_%.]*[fF]ault:") then return true end
+  -- Bare forms (Node.js style).
+  if line:match("^Error:%s") then return true end
+  if line:match("^Exception:%s") then return true end
+  return false
+end
+
 local function looks_like_diff_marker(line, in_diff)
   if line:sub(1, 3) == "+++" then return true end
   if line:sub(1, 3) == "---" then return true end
@@ -200,6 +233,7 @@ local function should_preserve_before(line, in_diff)
   if line:sub(1, 2) == "$ " then return true end
   if looks_like_log(line) then return true end
   if looks_like_stack_frame(line) then return true end
+  if looks_like_exception_class(line) then return true end
   return false
 end
 
@@ -268,6 +302,12 @@ local function join_wraps_pass(text)
   local result = {}
   local in_fence = false
   local in_diff = false
+  -- Tracks whether the most recently emitted non-blank line was a `|` table
+  -- row OR a cell-wrap continuation. Resets on blank lines and on emit of
+  -- any other structural preserve (heading, code, log, etc.). Used to
+  -- preserve cell-wrap continuation lines that lack a leading `|` but
+  -- semantically belong inside the table cell above them.
+  local prev_was_table_row = false
 
   local i = 1
   while i <= #lines do
@@ -275,12 +315,14 @@ local function join_wraps_pass(text)
 
     if is_fence_line(line) then
       in_fence = not in_fence
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
     end
 
     if in_fence then
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
@@ -293,12 +335,29 @@ local function join_wraps_pass(text)
     end
 
     if is_blank(line) then
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
     end
 
     if should_preserve_before(line, in_diff) or is_short_single_word(line) then
+      -- A `|` table row keeps table-continuation mode active; any other
+      -- structural preserve (heading, code, log, exception class, etc.)
+      -- exits table-continuation mode.
+      prev_was_table_row = (line:sub(1, 1) == "|")
+      table.insert(result, line)
+      i = i + 1
+      goto continue_outer
+    end
+
+    -- Cell-wrap continuation: a non-`|`, non-blank, non-preserved line that
+    -- immediately follows a `|` row (or another cell-wrap continuation) is
+    -- treated as wrapped cell content and preserved verbatim. Conservative:
+    -- a real paragraph that follows a table without a blank-line separator
+    -- (CommonMark spec violation but common) will also be preserved instead
+    -- of joined. Failure mode is over-preservation, never corruption.
+    if prev_was_table_row then
       table.insert(result, line)
       i = i + 1
       goto continue_outer
@@ -310,6 +369,7 @@ local function join_wraps_pass(text)
       local lineB = lines[j]
       if is_blank(lineB) then break end
       if ends_shell_continuation(acc) then break end
+      if ends_unbalanced_open_bracket(acc) then break end
       if should_preserve_before(lineB, in_diff) then break end
       if has_two_plus_tabs(acc) and has_two_plus_tabs(lineB) then break end
 
@@ -386,6 +446,12 @@ function M.clean(text, opts)
   if text == nil or text == "" then
     return text or ""
   end
+
+  -- Pass 0: normalize line endings up front. CRLF and bare CR fold to LF.
+  -- Unconditional (no opt-out flag). Output is always LF-only. This runs
+  -- before all flag-gated passes so downstream logic never has to consider
+  -- \r as a line break or as trailing whitespace.
+  text = text:gsub("\r\n", "\n"):gsub("\r", "\n")
 
   local cfg = {}
   for k, v in pairs(M.defaults) do

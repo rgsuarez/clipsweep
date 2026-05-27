@@ -1,0 +1,7 @@
+See the [doc1] reference for details.
+
+The body of the document
+continues here normally.
+
+[doc1]: https://example.com/doc1
+[doc2]: https://example.com/doc2

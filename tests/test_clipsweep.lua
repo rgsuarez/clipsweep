@@ -5,9 +5,17 @@
 
 local M = {}
 
-local FIXTURES_DIR = os.getenv("HOME") .. "/projects/clipsweep/tests/fixtures"
+-- Set by the caller (tests/run.lua) before invoking run_all().
+-- If unset, falls back to the legacy hardcoded path so an in-place
+-- dofile() from the Hammerspoon Console still works.
+M.fixtures_dir = nil
 
--- Fixtures that exercise non-default opts (the rest run on M.defaults).
+local function get_fixtures_dir()
+  return M.fixtures_dir or (os.getenv("HOME") .. "/projects/clipsweep/tests/fixtures")
+end
+
+-- Hand-maintained map retained for backward compatibility. New fixtures
+-- should use a NN_name.opts sibling file (see read_opts_for below).
 local FIXTURE_OPTS = {
   ["17_em_dash_in_prose"]       = { convert_dashes = true },
   ["18_en_dash_in_range"]       = { convert_dashes = true },
@@ -20,6 +28,25 @@ local function read_file(path)
   local content = f:read("*all") or ""
   f:close()
   return content
+end
+
+-- Read NN_name.opts (one key=value per line, values: true/false/string) if
+-- present. Falls back to the hand-maintained FIXTURE_OPTS table.
+local function read_opts_for(name, dir)
+  local content = read_file(dir .. "/" .. name .. ".opts")
+  if content == nil then
+    return FIXTURE_OPTS[name]
+  end
+  local opts = {}
+  for line in content:gmatch("[^\n]+") do
+    local k, v = line:match("^%s*([%w_]+)%s*=%s*(%S+)%s*$")
+    if k then
+      if v == "true" then opts[k] = true
+      elseif v == "false" then opts[k] = false
+      else opts[k] = v end
+    end
+  end
+  return opts
 end
 
 local function list_fixtures(dir)
@@ -58,7 +85,7 @@ end
 
 local function visible(s)
   if s == nil then return "<nil>" end
-  return (s:gsub("\n", "\\n"):gsub("\t", "\\t"))
+  return (s:gsub("\n", "\\n"):gsub("\t", "\\t"):gsub("\r", "\\r"))
 end
 
 local function explain_diff(expected, actual)
@@ -82,7 +109,7 @@ local function explain_diff(expected, actual)
   end
   if #expected ~= #actual then
     return string.format(
-      "length diff: expected %d bytes, actual %d bytes (one is a prefix of the other)\n        expected tail: %q\n        actual tail:   %q",
+      "length diff: expected %d, actual %d bytes (one is a prefix of the other)\n        expected tail: %q\n        actual tail:   %q",
       #expected, #actual,
       visible(expected:sub(n + 1)),
       visible(actual:sub(n + 1))
@@ -93,10 +120,11 @@ end
 
 function M.run_all()
   local clipsweep = require("clipsweep")
-  local fixtures = list_fixtures(FIXTURES_DIR)
+  local dir = get_fixtures_dir()
+  local fixtures = list_fixtures(dir)
 
   if #fixtures == 0 then
-    print("clipsweep tests: 0 fixtures discovered in " .. FIXTURES_DIR)
+    print("clipsweep tests: 0 fixtures discovered in " .. dir)
     return 0, 0
   end
 
@@ -104,8 +132,8 @@ function M.run_all()
   local failures = {}
 
   for _, name in ipairs(fixtures) do
-    local in_path  = FIXTURES_DIR .. "/" .. name .. ".in"
-    local exp_path = FIXTURES_DIR .. "/" .. name .. ".expected"
+    local in_path  = dir .. "/" .. name .. ".in"
+    local exp_path = dir .. "/" .. name .. ".expected"
     local input, ierr   = read_file(in_path)
     local expected, eerr = read_file(exp_path)
 
@@ -116,7 +144,7 @@ function M.run_all()
       fail = fail + 1
       table.insert(failures, { name = name, why = "read .expected: " .. tostring(eerr) })
     else
-      local opts = FIXTURE_OPTS[name]
+      local opts = read_opts_for(name, dir)
       local ok, actual = pcall(clipsweep.clean, input, opts)
       if not ok then
         fail = fail + 1

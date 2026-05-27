@@ -1,0 +1,14 @@
+# Default: let git detect text vs binary; normalize text to LF on checkin.
+* text=auto eol=lf
+
+# Source files: explicit LF, no autocrlf surprises on Windows checkouts.
+*.lua  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Test fixtures encode exact byte sequences (CRLF, BOM, lone CR, no-trailing-newline,
+# etc.). Treat as binary so git never transforms them on checkout or checkin.
+tests/fixtures/*.in       -text
+tests/fixtures/*.expected -text
+tests/fixtures/*.opts     -text
