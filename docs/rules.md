@@ -109,6 +109,20 @@ When a join proceeds, the separator between the accumulator and lineB defaults t
 
 3. **CJK.** If the accumulator's last UTF-8 codepoint OR lineB's first UTF-8 codepoint is in the CJK ranges (U+3000-U+9FFF or U+FF00-U+FFEF), separator is empty. CJK scripts do not use inter-word spaces.
 
+### Cell-wrap continuation after a `|` table row
+
+A non-`|`, non-blank, non-preserved line that immediately follows a `|` table row (or another cell-wrap continuation line) is preserved verbatim. This handles wrapped cell content that lacks a leading `|`:
+
+```
+| col a | col b |
+| ----- | ----- |
+| cell text
+continues on
+multiple lines | other |
+```
+
+Cell-wrap mode stays active until a blank line, another structural preserve marker (heading, code block, log, exception class, etc.), or end-of-input. Conservative tradeoff: a real paragraph that follows a table without a blank-line separator (a CommonMark spec violation but a common authoring mistake) will be preserved instead of joined. Failure mode is over-preservation, never corruption.
+
 ### Fence and diff state tracking
 
 - `in_fence` toggles on any line whose stripped form starts with ` ``` ` or `~~~`. While `in_fence` is true, every line is emitted verbatim and joins are suspended.

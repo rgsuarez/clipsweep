@@ -302,6 +302,12 @@ local function join_wraps_pass(text)
   local result = {}
   local in_fence = false
   local in_diff = false
+  -- Tracks whether the most recently emitted non-blank line was a `|` table
+  -- row OR a cell-wrap continuation. Resets on blank lines and on emit of
+  -- any other structural preserve (heading, code, log, etc.). Used to
+  -- preserve cell-wrap continuation lines that lack a leading `|` but
+  -- semantically belong inside the table cell above them.
+  local prev_was_table_row = false
 
   local i = 1
   while i <= #lines do
@@ -309,12 +315,14 @@ local function join_wraps_pass(text)
 
     if is_fence_line(line) then
       in_fence = not in_fence
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
     end
 
     if in_fence then
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
@@ -327,12 +335,29 @@ local function join_wraps_pass(text)
     end
 
     if is_blank(line) then
+      prev_was_table_row = false
       table.insert(result, line)
       i = i + 1
       goto continue_outer
     end
 
     if should_preserve_before(line, in_diff) or is_short_single_word(line) then
+      -- A `|` table row keeps table-continuation mode active; any other
+      -- structural preserve (heading, code, log, exception class, etc.)
+      -- exits table-continuation mode.
+      prev_was_table_row = (line:sub(1, 1) == "|")
+      table.insert(result, line)
+      i = i + 1
+      goto continue_outer
+    end
+
+    -- Cell-wrap continuation: a non-`|`, non-blank, non-preserved line that
+    -- immediately follows a `|` row (or another cell-wrap continuation) is
+    -- treated as wrapped cell content and preserved verbatim. Conservative:
+    -- a real paragraph that follows a table without a blank-line separator
+    -- (CommonMark spec violation but common) will also be preserved instead
+    -- of joined. Failure mode is over-preservation, never corruption.
+    if prev_was_table_row then
       table.insert(result, line)
       i = i + 1
       goto continue_outer

@@ -1,0 +1,7 @@
+| col a | col b |
+| ----- | ----- |
+| cell text
+continues on
+multiple lines | other |
+
+Trailing prose paragraph that wraps normally.
