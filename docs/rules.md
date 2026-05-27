@@ -4,7 +4,7 @@ This document describes every transformation rule applied by `lua/clipsweep.lua`
 
 ## Pass order
 
-Passes run in this fixed order. Each is independently gated by an `opts` flag.
+Passes run in this fixed order. Each behavior-changing pass is independently gated by an `opts` flag.
 
 | order | pass                       | flag                   | default |
 |-------|----------------------------|------------------------|---------|
@@ -26,7 +26,22 @@ Example:
 "foo   \nbar\t\n"  ->  "foo\nbar\n"
 ```
 
-## Pass 2: join_wraps
+## Pass 2: strip_gutter
+
+Walks every line and removes 1-3 leading spaces from non-blank lines, except when the leading whitespace is semantically meaningful:
+
+- Lines inside a fenced code block (between ` ``` ` markers) are not modified.
+- Lines that match a diff marker (`+++`, `---`, `@@`, or `+`/`-`/space inside an active diff hunk) are not modified.
+- Lines that match a stack frame shape (`Traceback`, `panic:`, `  File "..."`, `    at fn(...)`, etc.) are not modified.
+- Lines starting with a tab or with 4+ leading spaces are not modified (indented code).
+
+### Shell-continuation lookback
+
+If the previous non-blank line in the same paragraph ended with a shell continuation (`\`, `&&`, `||`, `|`, `;`), the current line's leading whitespace is preserved (treated as a continued shell command body that may have its own indent).
+
+Effect: terminal-rendered content that arrives with a uniform 2-space left gutter on every line, including the first line of a paragraph, is flattened to column 0. Indented bullets, numbered lists, blockquotes, headings, and table rows likewise lose the gutter and become column-0 structural elements; `join_wraps` then sees them as bare structural starters and preserves them correctly.
+
+## Pass 3: join_wraps
 
 The core unwrap pass. Walks the input line-by-line, opportunistically joining consecutive non-blank lines into a single longer line when the break between them is a cosmetic terminal-wrap break.
 
@@ -48,7 +63,7 @@ If the line currently being inspected starts a paragraph and matches ANY of thes
 - Log line: `[YYYY-...`, ISO `YYYY-MM-DD`, syslog `Mon Jan 1 12:34:56`, bracketed level `[DEBUG]`, level prefix `INFO:`, `[PID]`.
 - Stack frame: ` at fn (`, ` File "`, ` foo.go:N`, numbered Rust frame ` 0:`, `panic:`, `Traceback`.
 - Diff hunk / header: `+++`, `---`, `@@`, or any leading `+`/`-`/` ` while inside an active diff hunk.
-- Short single-word line (length < 40 chars, no spaces).
+- Short single-word line (length < 40 chars, no spaces, ASCII only). Non-ASCII single-word lines do not trigger this preserve; the CJK separator rule handles those at the join boundary instead.
 
 ### Per-iteration breakers inside the inner join loop
 
@@ -58,17 +73,6 @@ Inside an active join, the next candidate line (lineB) breaks the join if any of
 - The accumulator (the line being built) ends with a shell continuation (`\`, `&&`, `||`, `|`, `;`).
 - lineB itself triggers any of the block-all-joins rules above.
 - Both the accumulator and lineB contain 2 or more tab characters (TSV / tabular data).
-
-## Gutter strip pre-pass (`strip_gutter`)
-
-Runs after the trailing-whitespace strip and before `join_wraps`. Walks every line and removes 1-3 leading spaces from non-blank lines, except when the leading whitespace is semantically meaningful:
-
-- Lines inside a fenced code block (between ` ``` ` markers) are not modified.
-- Lines that match a diff marker (`+++`, `---`, `@@`, or `+`/`-`/space inside an active diff hunk) are not modified.
-- Lines that match a stack frame shape (`Traceback`, `panic:`, `  File "..."`, `    at fn(...)`, etc.) are not modified.
-- Lines starting with a tab or with 4+ leading spaces are not modified (indented code).
-
-Effect: terminal-rendered content that arrives with a uniform 2-space left gutter on every line, including the first line of a paragraph, is flattened to column 0. Indented bullets, numbered lists, blockquotes, headings, and table rows likewise lose the gutter and become column-0 structural elements; `join_wraps` then sees them as bare structural starters and preserves them correctly.
 
 ### Join separator selection
 
@@ -95,13 +99,17 @@ When a join proceeds, the separator between the accumulator and lineB defaults t
 - `in_fence` toggles on any line whose stripped form starts with ` ``` ` or `~~~`. While `in_fence` is true, every line is emitted verbatim and joins are suspended.
 - `in_diff` turns on at a line starting with `@@`, off at any blank line. While `in_diff` is true, lines starting with `+`, `-`, or a single leading space are preserve-before (treated as diff context).
 
-## Pass 3: convert_dashes (opt-in)
+### Unclosed fences
+
+An opening ` ``` ` (or `~~~`) with no matching closer means `in_fence` stays true through end-of-input: the rest of the input is preserved verbatim, with no joins, no dash conversion, and no gutter strip past the opener. `clipsweep` does not speculatively close an unclosed fence. If the input has a stray opener and you wanted the trailing prose to be cleaned, add a closing fence at the source.
+
+## Pass 4: convert_dashes (opt-in)
 
 Replaces U+2014 (em-dash glyph) and U+2013 (en-dash glyph) with ASCII hyphen `-`. Skipped while `in_fence` is true. Fence boundary lines themselves are not modified.
 
 Disabled by default (`convert_dashes = false`). Enable via `opts.convert_dashes = true` on a per-call basis, or by editing the default in `lua/clipsweep.lua`.
 
-## Pass 4: collapse_blank_lines
+## Pass 5: collapse_blank_lines
 
 Runs of 2 or more consecutive blank lines in the body collapse to a single blank line. Trailing blank lines at the end of the body are trimmed (the original trailing-newline count is restored after this pass, so this affects body-internal collapse only, not end-of-text formatting).
 
@@ -114,6 +122,10 @@ Example:
 ## Trailing-newline behavior
 
 `clipsweep` preserves the number of trailing `\n` characters in the input. If the input ended with zero trailing newlines, the output ends with zero. If it ended with one, the output ends with one. The collapse pass may reduce 3+ trailing newlines to 2 if the user has unusual end-of-text whitespace, but never synthesizes a trailing newline that wasn't there.
+
+## BOM behavior
+
+A UTF-8 BOM (`U+FEFF`, byte sequence `EF BB BF`) at the start of the input is preserved verbatim. `clipsweep` does not strip the BOM. If the downstream consumer needs BOM-less text, strip it before or after the call.
 
 ## Empty input
 
