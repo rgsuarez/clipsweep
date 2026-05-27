@@ -38,7 +38,16 @@ do
     end
 
     previous_clipboard = current
-    local cleaned = clipsweep.clean(current)
+    local ok, cleaned = pcall(clipsweep.clean, current)
+    if not ok then
+      -- pcall returns false + error message on a Lua error inside clean().
+      -- Surface to the user (was: silent Console-only log) and roll back the
+      -- undo stash so a subsequent restore does not write current back as if
+      -- the transform had succeeded.
+      hs.alert.show("clipsweep: error (" .. tostring(cleaned) .. ")", 2.5)
+      previous_clipboard = nil
+      return
+    end
 
     if cleaned == current then
       hs.alert.show("clipsweep: 0 changes", 0.8)
