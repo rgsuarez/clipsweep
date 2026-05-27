@@ -109,7 +109,7 @@ local function explain_diff(expected, actual)
   end
   if #expected ~= #actual then
     return string.format(
-      "length diff: expected %d bytes, actual %d bytes (one is a prefix of the other)\n        expected tail: %q\n        actual tail:   %q",
+      "length diff: expected %d, actual %d bytes (one is a prefix of the other)\n        expected tail: %q\n        actual tail:   %q",
       #expected, #actual,
       visible(expected:sub(n + 1)),
       visible(actual:sub(n + 1))

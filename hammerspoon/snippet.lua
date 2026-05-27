@@ -43,8 +43,8 @@ do
     end
 
     _G.clipsweep_state.previous_clipboard = current
-    local ok, cleaned = pcall(clipsweep.clean, current)
-    if not ok then
+    local clean_ok, cleaned = pcall(clipsweep.clean, current)
+    if not clean_ok then
       -- pcall returns false + error message on a Lua error inside clean().
       -- Surface to the user (was: silent Console-only log) and roll back the
       -- undo stash so a subsequent restore does not write current back as if

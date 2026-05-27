@@ -39,7 +39,7 @@ package.loaded.test_clipsweep = nil
 local tests = require("test_clipsweep")
 tests.fixtures_dir = repo_root .. "/tests/fixtures"
 
-local _pass, fail = tests.run_all()
+local _, fail = tests.run_all()
 
 -- Under standalone Lua (no global `hs`), exit non-zero so CI fails on red.
 if not _G.hs then
