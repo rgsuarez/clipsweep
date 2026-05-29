@@ -4,11 +4,12 @@ This document describes every transformation rule applied by `lua/clipsweep.lua`
 
 ## Pass order
 
-Passes run in this fixed order. Pass 0 is unconditional; every other pass is independently gated by an `opts` flag.
+Passes run in this fixed order. Line-ending normalization is unconditional; every other pass is independently gated by an `opts` flag.
 
 | order | pass                       | flag                   | default |
 |-------|----------------------------|------------------------|---------|
 | 0     | normalize_line_endings     | (unconditional)        | always  |
+| 0     | normalize_quotes           | `normalize_quotes`     | true    |
 | 1     | strip_trailing_ws_pass     | `strip_trailing_ws`    | true    |
 | 2     | strip_gutter_pass          | `strip_gutter`         | true    |
 | 3     | join_wraps_pass            | `join_wraps`           | true    |
@@ -17,17 +18,36 @@ Passes run in this fixed order. Pass 0 is unconditional; every other pass is ind
 
 The trailing-newline count of the input is preserved across all passes. Passes never synthesize a trailing `\n`; the collapse pass may reduce 3+ trailing blank lines, but cannot turn a non-newline-terminated input into a newline-terminated one.
 
-## Pass 0: normalize_line_endings
+## Pass 0: input normalization
 
-CRLF (`\r\n`) and bare CR (`\r`) sequences fold to LF (`\n`). Unconditional; no opt-out flag. Output is always LF-only. This runs before every other pass so downstream logic never has to consider `\r` as a line break or as trailing whitespace.
+Two glyph-level normalizations run before any structure-aware pass, so downstream logic only ever sees LF line breaks and ASCII quotes. Line-ending normalization runs first, then quote folding.
 
-Example:
+### Line endings (unconditional)
+
+CRLF (`\r\n`) and bare CR (`\r`) sequences fold to LF (`\n`). No opt-out flag. Output is always LF-only.
 
 ```
 "foo\r\nbar\r\n"  ->  "foo\nbar\n"
 ```
 
 Rationale: macOS clipboards commonly receive CRLF content from Windows tools and from web sources. Without normalization the join pass would inject a space between `foo\r` and `bar`, leaving a stray `\r` mid-line in the cleaned output.
+
+### Smart quotes (`normalize_quotes`, default true)
+
+The four common "smart" quotation marks fold to their ASCII equivalents:
+
+| from   | name                        | to  |
+|--------|-----------------------------|-----|
+| U+2018 | LEFT SINGLE QUOTATION MARK  | `'` |
+| U+2019 | RIGHT SINGLE QUOTATION MARK | `'` |
+| U+201C | LEFT DOUBLE QUOTATION MARK  | `"` |
+| U+201D | RIGHT DOUBLE QUOTATION MARK | `"` |
+
+Rationale: smart quotes emitted by LLM tooling and markdown renderers break shell and code parsing. A pasted command whose quotes were silently curled hangs in the shell continuation prompt. clipsweep previously left these untouched and reported "0 changes" on such input.
+
+Deliberately **not** fence-aware, unlike `convert_dashes`. Smart quotes break parsing wherever they appear, including inside code fences (which is exactly where a pasted shell command lives), so the fold applies to the whole input. This is the opposite choice from `convert_dashes`, which skips fenced content because em/en dashes are more often intentional.
+
+Default on. Disable per call with `M.clean(text, { normalize_quotes = false })`; the restore hotkey reverses any unwanted change. Other Unicode punctuation (primes U+2032 / U+2033, guillemets, low-9 and high-reversed-9 quote variants, ellipsis) is deliberately out of scope: rare in clipboard-cleanup content and more likely to be intentional.
 
 ## Pass 1: strip_trailing_ws
 

@@ -1,14 +1,16 @@
--- clipsweep v0.2.0
+-- clipsweep v0.3.0
 -- Pure-Lua clipboard cleanup transformer.
 -- Unwraps cosmetic terminal-wrap line breaks; dedents 1-3 space gutters;
--- preserves Markdown, code, diff, log, stack-trace, table, URL, and CJK
--- structure. Optional em/en dash conversion. Designed to be loaded by the
--- Hammerspoon pasteboard snippet but has no Hammerspoon dependency.
+-- folds smart quotes to ASCII (default on); preserves Markdown, code, diff,
+-- log, stack-trace, table, URL, and CJK structure. Optional em/en dash
+-- conversion. Designed to be loaded by the Hammerspoon pasteboard snippet
+-- but has no Hammerspoon dependency.
 
 local M = {}
 
 M.defaults = {
   convert_dashes       = false,  -- em/en dash -> ASCII hyphen, off in v1
+  normalize_quotes     = true,   -- smart quotes -> ASCII ' and ", on by default
   join_wraps           = true,   -- core unwrap pass
   collapse_blank_lines = true,   -- 3+ blank lines -> 1 blank line
   strip_trailing_ws    = true,   -- per-line trailing space/tab strip
@@ -404,6 +406,21 @@ local function join_wraps_pass(text)
   return join_lines_back(result, trailing)
 end
 
+-- Fold the four common "smart" quotes to their ASCII equivalents:
+--   U+2018 ' and U+2019 ' -> '   (LEFT/RIGHT SINGLE QUOTATION MARK)
+--   U+201C " and U+201D " -> "   (LEFT/RIGHT DOUBLE QUOTATION MARK)
+-- Deliberately NOT fence-aware (unlike convert_dashes_pass): smart quotes
+-- break shell and code parsing wherever they appear, including inside code
+-- fences, and are almost never intentional in clipboard-cleanup content.
+-- Runs as the first flag-gated pass, on the whole text, before any
+-- structure-aware pass. The high bytes (0xE2 0x80 0x9X) carry no Lua-pattern
+-- magic, so they match literally.
+local function normalize_quotes_pass(text)
+  text = text:gsub("\xE2\x80\x98", "'"):gsub("\xE2\x80\x99", "'")
+  text = text:gsub("\xE2\x80\x9C", '"'):gsub("\xE2\x80\x9D", '"')
+  return text
+end
+
 local function convert_dashes_pass(text)
   local lines, trailing = split_lines(text)
   local in_fence = false
@@ -463,6 +480,9 @@ function M.clean(text, opts)
     end
   end
 
+  if cfg.normalize_quotes then
+    text = normalize_quotes_pass(text)
+  end
   if cfg.strip_trailing_ws then
     text = strip_trailing_ws_pass(text)
   end

@@ -1,0 +1,3 @@
+codex mcp login slack \
+  -c mcp_oauth_callback_port=3118 \
+  -c 'mcp_oauth_callback_url="http://127.0.0.1:3118/callback"'

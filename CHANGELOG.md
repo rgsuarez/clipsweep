@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-29
+
+### Added
+
+- `normalize_quotes` pass (default on): folds the four common smart quotes to ASCII. U+2018 / U+2019 to `'`, U+201C / U+201D to `"`. Runs in the Pass 0 input-normalization stage, before any structure-aware pass, and applies to the whole input including inside code fences. Disable per call with `M.clean(text, { normalize_quotes = false })`.
+- Fixtures `54_smart_quotes_shell` (the multi-line shell command repro), `55_ascii_quotes_unchanged` (negative: ASCII quotes pass through), and `56_smart_quotes_in_code_fence` (pins the deliberate non-fence-aware behavior).
+
+### Changed
+
+- BEHAVIOR REVERSAL: smart quotes are now normalized to ASCII by default. The v0.1.0 contract left them untouched ("v1 does not normalize smart quotes"). The fixture `20_smart_quotes_preserved` is renamed to `20_smart_quotes_normalized`, keeps its curly-quote input, and now expects ASCII output. To restore the old behavior, pass `{ normalize_quotes = false }`.
+- `docs/rules.md`: Pass 0 is now an "input normalization" stage documenting both line-ending folding (unconditional) and smart-quote folding (`normalize_quotes`, default on), including the deliberate contrast with the fence-aware `convert_dashes`.
+- `README.md`: status to v0.3.0; config table, "What it cleans", and Limitations updated for smart-quote normalization.
+
+### Fixed
+
+- Smart quotes emitted by LLM tooling (codex and similar) in a copied shell command no longer break the paste. clipsweep previously reported "0 changes" and left the curly quotes in place, so the pasted command hung in the shell continuation prompt. The quotes now fold to ASCII and the command parses.
+
 ## [0.2.0] - 2026-05-27
 
 ### Added
@@ -55,6 +72,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - New gutter-strip pre-pass (`strip_gutter`, default `true`) dedents 1-3 leading spaces from every non-blank line before the join pass runs. Skips lines inside code fences, diff markers, stack frames, and 4+-space / tab indented code. Effect: terminal-rendered content with a uniform 2-space left gutter ends up flush-left, with structural elements (bullets, numbered lists, headings, blockquotes, tables, code fences) intact at column 0.
 - Full heuristic spec documented in `docs/rules.md`.
 
-[Unreleased]: https://github.com/rgsuarez/clipsweep/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rgsuarez/clipsweep/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/rgsuarez/clipsweep/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rgsuarez/clipsweep/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rgsuarez/clipsweep/releases/tag/v0.1.0

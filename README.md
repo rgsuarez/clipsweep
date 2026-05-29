@@ -16,7 +16,7 @@ Pure-Lua transformer module, loaded by Hammerspoon. No external dependencies. No
 
 ## Status
 
-v0.2.0, local-only.
+v0.3.0, local-only.
 
 ## Requirements
 
@@ -51,6 +51,7 @@ The default config is conservative:
 | flag                  | default | what it does                                      |
 |-----------------------|---------|---------------------------------------------------|
 | `join_wraps`          | true    | join terminal-wrap line breaks in prose           |
+| `normalize_quotes`    | true    | fold smart quotes (U+2018/19/1C/1D) to ASCII      |
 | `strip_trailing_ws`   | true    | strip trailing whitespace per line                |
 | `collapse_blank_lines`| true    | collapse runs of 3+ blank lines to 1 blank line   |
 | `convert_dashes`      | false   | convert U+2014 / U+2013 to ASCII hyphen           |
@@ -84,13 +85,14 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 - Trailing whitespace per line.
 - Runs of 3+ blank lines collapsed to 1 blank line between content.
 - CRLF and bare CR line endings folded to LF (unconditional Pass 0).
+- Smart quotes folded to ASCII (`'` and `"`) so pasted shell commands and code parse correctly. Default on; disable with `clipsweep.clean(text, { normalize_quotes = false })`. Applies everywhere, including inside code fences.
 
 ## Limitations
 
 - Heuristic, not perfect. The restore hotkey is the safety net.
 - One level of undo only.
 - URL detection is best-effort; some edge cases (URL ending at end of a sentence with no terminal punctuation) may join incorrectly.
-- v1 does not normalize smart quotes or other Unicode punctuation. UTF-8 BOM is preserved as-is.
+- Smart-quote normalization covers the four common quotes (U+2018, U+2019, U+201C, U+201D) only. Other Unicode punctuation (primes, guillemets, low-9 / high-reversed-9 quote variants, ellipsis) and em/en dashes (see `convert_dashes`) are not folded by `normalize_quotes`. UTF-8 BOM is preserved as-is.
 - Java-style lowercase-prefix exception FQNs (`java.lang.NullPointerException`) are not matched by the exception-class preserve.
 - A paragraph that immediately follows a Markdown table without a blank-line separator (CommonMark violation but common) is preserved as cell-wrap continuation, not joined.
 
