@@ -1,0 +1,1 @@
+- Project Health Monitor now has Notion Health write-back v0.1, an hourly refresh pipeline with honest staleness reporting, and a COO morning brief that summarizes project verdicts and items needing attention.

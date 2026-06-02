@@ -16,7 +16,7 @@ Pure-Lua transformer module, loaded by Hammerspoon. No external dependencies. No
 
 ## Status
 
-v0.3.0, local-only.
+v0.4.0, local-only.
 
 ## Requirements
 
@@ -64,7 +64,8 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 
 `clipsweep` is built to leave structure alone. Lines starting with any of these signals are preserved unchanged:
 
-- Markdown headings (`#`), bullets (`-`, `*`, `+`), numbered lists, blockquotes (`>`), tables (`|`), setext underlines (`---`, `===`), link references (`[`), HTML tags (`<`).
+- Markdown headings (`#`), tables (`|`), setext underlines (`---`, `===`), link references (`[`), HTML tags (`<`).
+- List and blockquote boundaries: bullets (`-`, `*`, `+`), numbered lists, and blockquotes (`>`) each stay anchored to their own line. One item is never merged into the next, nor into an adjacent paragraph. As of v0.4.0 a marker-less line wrapped *below* such a marker is treated as a cosmetic wrap and folded into the item (see "What it cleans") rather than left as a stray short line.
 - Fenced code blocks (everything inside ```` ``` ```` or `~~~`).
 - Indented code (4+ leading spaces or a tab).
 - Shell continuations (`\`, `&&`, `||`, `|`, `;` at end of line).
@@ -79,6 +80,7 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 ## What it cleans
 
 - Paragraph wraps: consecutive non-blank prose lines get joined with a single space.
+- List and blockquote continuation wraps (new in v0.4.0): a bullet, numbered item, or blockquote whose text was hard-wrapped onto marker-less lines below it is rejoined into one line. Item boundaries are kept (the next marker, a blank line, or any other structure still breaks the join); only the within-item wrap collapses. Headings are deliberately excluded.
 - Hyphenated wraps at line end (`self-\ncontained` -> `self-contained`): joined without space.
 - URL wraps (lineA ends in a URL token, lineB continues): joined without space.
 - CJK text at the wrap boundary: joined without space (no inter-word space convention).
@@ -142,7 +144,7 @@ Or from a shell with the Hammerspoon CLI installed:
 hs -c "dofile(os.getenv('HOME') .. '/projects/clipsweep/tests/run.lua')"
 ```
 
-Expected output: `clipsweep tests: 53/53 PASS`.
+Expected output: `clipsweep tests: 64/64 PASS`.
 
 See `tests/README.md` for the fixture format reference and `CONTRIBUTING.md` for the walkthrough on adding a fixture.
 

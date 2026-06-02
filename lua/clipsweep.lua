@@ -1,10 +1,11 @@
--- clipsweep v0.3.0
+-- clipsweep v0.4.0
 -- Pure-Lua clipboard cleanup transformer.
--- Unwraps cosmetic terminal-wrap line breaks; dedents 1-3 space gutters;
--- folds smart quotes to ASCII (default on); preserves Markdown, code, diff,
--- log, stack-trace, table, URL, and CJK structure. Optional em/en dash
--- conversion. Designed to be loaded by the Hammerspoon pasteboard snippet
--- but has no Hammerspoon dependency.
+-- Unwraps cosmetic terminal-wrap line breaks, including hard-wrapped list
+-- items and blockquotes; dedents 1-3 space gutters; folds smart quotes to
+-- ASCII (default on); preserves Markdown, code, diff, log, stack-trace,
+-- table, URL, and CJK structure. Optional em/en dash conversion. Designed to
+-- be loaded by the Hammerspoon pasteboard snippet but has no Hammerspoon
+-- dependency.
 
 local M = {}
 
@@ -239,6 +240,23 @@ local function should_preserve_before(line, in_diff)
   return false
 end
 
+-- True if `line` is a list item or blockquote marker that begins prose which
+-- may have been hard-wrapped across several physical lines. Unlike every other
+-- should_preserve_before starter (heading, code, log, table, stack frame, ...),
+-- these SEED a join in join_wraps_pass: their marker-less continuation lines
+-- fold back up into the marker line. The patterns are byte-identical to the
+-- bullet / numbered-list / blockquote arms of should_preserve_before, so a
+-- marker still BREAKS an ongoing join when it appears as lineB; one list item
+-- never absorbs the next. Headings are deliberately excluded: they rarely wrap
+-- in a terminal, and merging a heading into the line below it (when no blank
+-- line separates them) is a high-cost corruption.
+local function starts_list_or_quote(line)
+  if line:match("^[%-%*%+]%s") then return true end
+  if line:match("^%d+%.%s") then return true end
+  if line:match("^>") then return true end
+  return false
+end
+
 -- Passes ----------------------------------------------------------------
 
 local function strip_trailing_ws_pass(text)
@@ -343,10 +361,16 @@ local function join_wraps_pass(text)
       goto continue_outer
     end
 
-    if should_preserve_before(line, in_diff) or is_short_single_word(line) then
-      -- A `|` table row keeps table-continuation mode active; any other
-      -- structural preserve (heading, code, log, exception class, etc.)
-      -- exits table-continuation mode.
+    local is_list_quote = starts_list_or_quote(line)
+
+    -- Structural preserves that are NOT list/quote markers (heading, code,
+    -- log, table, exception class, etc.) are emitted standalone and never seed
+    -- a join. A `|` table row keeps table-continuation mode active; any other
+    -- such preserve exits it. List/quote markers fall through to the join loop
+    -- below so their hard-wrapped continuation lines fold back up into the
+    -- marker line.
+    if not is_list_quote
+       and (should_preserve_before(line, in_diff) or is_short_single_word(line)) then
       prev_was_table_row = (line:sub(1, 1) == "|")
       table.insert(result, line)
       i = i + 1
@@ -358,11 +382,21 @@ local function join_wraps_pass(text)
     -- treated as wrapped cell content and preserved verbatim. Conservative:
     -- a real paragraph that follows a table without a blank-line separator
     -- (CommonMark spec violation but common) will also be preserved instead
-    -- of joined. Failure mode is over-preservation, never corruption.
-    if prev_was_table_row then
+    -- of joined. Failure mode is over-preservation, never corruption. A
+    -- list/quote marker is exempt: it begins a new list item, not wrapped cell
+    -- text, so it resets table-continuation mode (below) instead of extending it.
+    if prev_was_table_row and not is_list_quote then
       table.insert(result, line)
       i = i + 1
       goto continue_outer
+    end
+
+    -- A list/quote marker seeds the join loop and clears table-continuation
+    -- mode. The inner loop's should_preserve_before(lineB) breaker stops the
+    -- join at the next marker, a blank line, or any other structural element,
+    -- so only the within-item terminal wrap collapses.
+    if is_list_quote then
+      prev_was_table_row = false
     end
 
     local acc = line

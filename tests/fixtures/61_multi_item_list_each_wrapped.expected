@@ -1,0 +1,3 @@
+- First item is long enough that it wraps onto a continuation line here.
+- Second item also wraps onto its own continuation line.
+- Third item is short.

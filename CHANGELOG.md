@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-01
+
+### Added
+
+- List and blockquote continuation folding in `join_wraps`: a hard-wrapped bullet (`-`, `*`, `+`), numbered-list item (`N.`), or blockquote (`>`) whose text was terminal-wrapped onto marker-less lines below it is now rejoined into a single line. The marker seeds the join; the existing inner-loop breakers stop it at the next marker, a blank line, or any other structural element, so item boundaries are preserved and only the within-item wrap collapses. Default on, no new flag; the restore hotkey reverses any unwanted merge. Headings (`#`) are deliberately excluded (a heading rarely wraps, and merging it into the line below is a high-cost corruption).
+- Fixtures `57_wrapped_bullet_two_lines`, `58_wrapped_bullet_three_lines`, `59_wrapped_numbered_item`, `60_wrapped_blockquote_lazy`, `61_multi_item_list_each_wrapped`, and `62_release_note_end_to_end` (positive coverage), plus regression guards `63_heading_not_absorbed` (heading exclusion) and `64_list_marker_beats_table_continuation` (marker precedence over cell-wrap continuation). Total fixture count: 64.
+
+### Changed
+
+- `join_wraps_pass`: list and blockquote markers are no longer block-all-joins lineA preserves; they seed a join instead. A new `starts_list_or_quote` predicate gates the lineA behavior and takes precedence over the table cell-wrap continuation branch (a marker after a `|` row is a new list item, not wrapped cell text). `should_preserve_before` is unchanged, so the same markers still break a join when encountered as lineB; one list item never absorbs the next.
+- `docs/rules.md`: Pass 3 gains a "List and blockquote continuation folding (lineA seeds a join)" subsection; bullets, numbered lists, and blockquotes are removed from the block-all-joins lineA list; the per-iteration breaker note clarifies that markers break as lineB.
+- `README.md`: status to v0.4.0; "What it preserves" reframed to list/blockquote *boundaries* rather than full preservation; "What it cleans" gains list and blockquote continuation wraps; expected PASS count to 64.
+
+### Fixed
+
+- A terminal-wrapped Markdown list item (the common case of copying a long bulleted list out of an agent CLI or a pager) no longer pastes with the marker line stranded on its own line and only the trailing continuation lines joined to each other. The whole item now folds to a single line. The same fix applies to numbered lists and lazy-continuation blockquotes.
+
 ## [0.3.0] - 2026-05-29
 
 ### Added

@@ -1,0 +1,28 @@
+  Liquid OS advancements update: the Wednesday release note is staged and still
+  hidden, but the seven-day buildout is materially bigger than a short teaser.
+
+  Current highlights in the 2026-06-03 draft:
+  - Project Health Monitor now has Notion Health write-back v0.1, an hourly
+  refresh pipeline with honest staleness reporting, and a COO morning brief that
+  summarizes project verdicts and items needing attention.
+  - Onboarding tracker is much easier to operate: search, filters, sortable
+  columns, sticky headers, and clearer links.
+  - People surfaces now show employment type and hire type in more places, future
+  hires show as Pre-hire instead of Terminated, and email copy controls are
+  available across directory, profile, and tracker rows.
+  - Liquid Slack Bot can answer against company-history material, walk org
+  subtrees without stalling, and filter people searches by employment type and
+  hire type.
+  - Liquid Companion has daily auto-summary back at the user-set time, approved
+  summaries syncing to the web app, Local (LFM) / Cloud (Anthropic) backend
+  selection, and updated local model support.
+  - Model Adoption added per-section CSV export and chart-axis fixes for single-
+  value histories.
+  - Offboarding tracker and overview are live as a limited rollout for the
+  offboarding and finance group, with broader access still gated.
+  - Foundations also moved: Notion-owned project fields are protected from
+  accidental overwrites, shared UI primitives were extracted, and test coverage
+  landed around several cron, dashboard, onboarding, and helper paths.
+
+  The release note is not public yet. Final step is the Wednesday publish flip,
+  production /release-notes smoke, then the channel announcement.

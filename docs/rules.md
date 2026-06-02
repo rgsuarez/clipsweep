@@ -80,13 +80,10 @@ The core unwrap pass. Walks the input line-by-line, opportunistically joining co
 
 ### Block-all-joins at lineA (first line of a potential join)
 
-If the line currently being inspected starts a paragraph and matches ANY of these, no join is attempted; the line is emitted as-is and the walker advances:
+If the line currently being inspected starts a paragraph and matches ANY of these, no join is attempted; the line is emitted as-is and the walker advances. The one exception is a list or blockquote marker, which matches `should_preserve_before` but instead *seeds* a join (see the next subsection):
 
 - Indented-code prefix: a leading tab, or 4+ leading spaces.
 - Markdown heading (`#`).
-- Markdown bullet (`-`, `*`, `+` followed by a space).
-- Markdown numbered list (`[0-9]+\.` followed by a space).
-- Blockquote (`>`).
 - Fenced code block opener / closer (` ``` ` or `~~~`).
 - Table row (`|`).
 - Setext underline or horizontal rule (standalone `---` or `===`).
@@ -99,6 +96,16 @@ If the line currently being inspected starts a paragraph and matches ANY of thes
 - Diff hunk / header: `+++`, `---`, `@@`, or any leading `+`/`-`/` ` while inside an active diff hunk.
 - Short single-word line (length < 40 chars, no spaces, ASCII only). Non-ASCII single-word lines do not trigger this preserve; the CJK separator rule handles those at the join boundary instead.
 
+### List and blockquote continuation folding (lineA seeds a join)
+
+A Markdown bullet (`-`, `*`, `+` followed by a space), numbered-list item (`[0-9]+\.` followed by a space), or blockquote (`>`) at lineA does NOT block joins. It seeds the accumulator and folds its hard-wrapped continuation lines back up into the marker line, using the same inner join loop and the same per-iteration breakers as ordinary prose. This is what unwraps a terminal-wrapped list item, where the marker sits on the first physical line and the rest of the item arrives as marker-less short lines below it.
+
+The join stops exactly where the breakers below say it does. The next list or blockquote marker is itself a `should_preserve_before` line (see "Per-iteration breakers"), so it breaks the join: one item never absorbs the next. A blank line, a heading, a code fence, a table row, or any other structural element below the item also breaks it. Item boundaries are preserved; only the cosmetic within-item wrap collapses.
+
+Headings (`#`) are deliberately NOT seeds; they remain block-all-joins lineA preserves. A heading rarely wraps in a terminal, and merging a heading into the prose line directly below it (when no blank line separates them) is a high-cost corruption.
+
+Tradeoff (lazy continuation): a genuine loose paragraph placed directly under a list item with no blank-line separator is absorbed into the item, the same cosmetic-wrap bet this pass already makes for any two adjacent prose lines. The restore hotkey reverses it. A list or blockquote marker also takes precedence over the cell-wrap continuation rule below: a marker immediately after a `|` row is treated as a new list item, not as wrapped cell text, and it resets table-continuation mode.
+
 ### Per-iteration breakers inside the inner join loop
 
 Inside an active join, the next candidate line (lineB) breaks the join if any of the following are true:
@@ -106,7 +113,7 @@ Inside an active join, the next candidate line (lineB) breaks the join if any of
 - lineB is blank.
 - The accumulator (the line being built) ends with a shell continuation (`\`, `&&`, `||`, `|`, `;`).
 - The accumulator ends with an unbalanced open `(` or `[` (open count > close count). Wrapped Markdown link or image syntax like `[label](\nhttps://...)` then keeps its line break instead of getting a space injected inside the parens. Conservative: over-preserves on prose with literal unbalanced parens; never under-preserves.
-- lineB itself triggers any of the block-all-joins rules above.
+- lineB is a `should_preserve_before` line: any of the block-all-joins rules above, OR a list/blockquote marker (bullet, numbered item, `>`). Markers break as lineB even though they seed at lineA; this is what stops one list item from swallowing the next, an adjacent paragraph, or a following list.
 - Both the accumulator and lineB contain 2 or more tab characters (TSV / tabular data).
 
 ### Join separator selection
