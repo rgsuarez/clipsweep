@@ -83,7 +83,7 @@ The core unwrap pass. Walks the input line-by-line, opportunistically joining co
 If the line currently being inspected starts a paragraph and matches ANY of these, no join is attempted; the line is emitted as-is and the walker advances. The one exception is a list or blockquote marker, which matches `should_preserve_before` but instead *seeds* a join (see the next subsection):
 
 - Indented-code prefix: a leading tab, or 4+ leading spaces.
-- Markdown heading (`#`).
+- Markdown ATX heading: one or more `#` followed by a space (`# Heading`), or a line of only `#`. The space is required, so prose that starts with `#42` (a PR/issue reference) or `#launch` (a hashtag) is NOT treated as a heading and stays free to join its wrapped continuation like any paragraph.
 - Fenced code block opener / closer (` ``` ` or `~~~`).
 - Table row (`|`).
 - Setext underline or horizontal rule (standalone `---` or `===`).
