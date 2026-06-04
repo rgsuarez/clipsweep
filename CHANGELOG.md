@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-04
+
+### Fixed
+
+- Indented continuation lines of a wrapped list or blockquote item now fold into the item. When a terminal copy carries a left gutter, a wrapped item's continuation is indented under the marker text (gutter plus the list hanging indent, commonly 4+ spaces), which `starts_with_code_indent` read as an indented code block, so `join_wraps` left it stranded on its own line. A list/quote-seeded join now dedents and absorbs such a continuation, while a line that is still structural after the dedent (a nested bullet or numbered item, a fence, a table row, a heading, a log line, etc.) still breaks the join. Standalone indented code blocks are unaffected.
+- Fixtures `68_numbered_list_indented_continuation` and `69_bullet_indented_continuation`. Total fixture count: 69.
+
 ## [0.4.1] - 2026-06-04
 
 ### Fixed

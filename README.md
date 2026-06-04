@@ -67,7 +67,7 @@ To override defaults, edit the `clipsweep.clean(text, opts)` call in `hammerspoo
 - Markdown headings (`#` followed by a space), tables (`|`), setext underlines (`---`, `===`), link references (`[`), HTML tags (`<`). A line that starts with `#` and no space (a PR/issue ref like `#63`, or a `#hashtag`) is ordinary prose, and its wraps are joined.
 - List and blockquote boundaries: bullets (`-`, `*`, `+`), numbered lists, and blockquotes (`>`) each stay anchored to their own line. One item is never merged into the next, nor into an adjacent paragraph. As of v0.4.0 a marker-less line wrapped *below* such a marker is treated as a cosmetic wrap and folded into the item (see "What it cleans") rather than left as a stray short line.
 - Fenced code blocks (everything inside ```` ``` ```` or `~~~`).
-- Indented code (4+ leading spaces or a tab).
+- Indented code (4+ leading spaces or a tab) when it stands alone. An indented line that is the wrapped continuation of a list or blockquote item is instead dedented and folded into the item (as of v0.4.2).
 - Shell continuations (`\`, `&&`, `||`, `|`, `;` at end of line).
 - Log lines (ISO timestamps, `[INFO]`/`[ERROR]` shapes, syslog).
 - Diff hunks (`@@`, `+++`, `---`, `+`/`-`/space inside a hunk).
@@ -144,7 +144,7 @@ Or from a shell with the Hammerspoon CLI installed:
 hs -c "dofile(os.getenv('HOME') .. '/projects/clipsweep/tests/run.lua')"
 ```
 
-Expected output: `clipsweep tests: 67/67 PASS`.
+Expected output: `clipsweep tests: 69/69 PASS`.
 
 See `tests/README.md` for the fixture format reference and `CONTRIBUTING.md` for the walkthrough on adding a fixture.
 

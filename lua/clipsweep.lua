@@ -1,4 +1,4 @@
--- clipsweep v0.4.1
+-- clipsweep v0.4.2
 -- Pure-Lua clipboard cleanup transformer.
 -- Unwraps cosmetic terminal-wrap line breaks, including hard-wrapped list
 -- items and blockquotes; dedents 1-3 space gutters; folds smart quotes to
@@ -410,7 +410,25 @@ local function join_wraps_pass(text)
       if is_blank(lineB) then break end
       if ends_shell_continuation(acc) then break end
       if ends_unbalanced_open_bracket(acc) then break end
-      if should_preserve_before(lineB, in_diff) then break end
+
+      -- Indented continuation of a list/quote item. A wrapped line aligned
+      -- under the marker text arrives indented (the terminal gutter plus the
+      -- list's hanging indent commonly total 4+ spaces), which
+      -- `starts_with_code_indent` would otherwise read as an indented code
+      -- block and refuse to join. When THIS join was seeded by a list/quote
+      -- marker, dedent such a line and absorb it as continuation; only break
+      -- if it is still structural after the dedent (a nested bullet or
+      -- numbered item, a fence, a table row, a heading, a log line, etc.).
+      -- Scoped to list/quote seeds, so a standalone indented code block (whose
+      -- own first line is the indented-code lineA preserve) is never touched.
+      if is_list_quote and starts_with_code_indent(lineB) then
+        local dedented = lineB:gsub("^[ \t]+", "")
+        if should_preserve_before(dedented, in_diff) then break end
+        lineB = dedented
+      elseif should_preserve_before(lineB, in_diff) then
+        break
+      end
+
       if has_two_plus_tabs(acc) and has_two_plus_tabs(lineB) then break end
 
       local sep = " "

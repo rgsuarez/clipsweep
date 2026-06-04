@@ -1,0 +1,2 @@
+1. Reads the config file to find the newest entry, then computes the next window from it.
+2. Queries the API inside that window, pulling the title, body, and the list of changed files for each record.
