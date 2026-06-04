@@ -1,4 +1,4 @@
--- clipsweep v0.4.0
+-- clipsweep v0.4.1
 -- Pure-Lua clipboard cleanup transformer.
 -- Unwraps cosmetic terminal-wrap line breaks, including hard-wrapped list
 -- items and blockquotes; dedents 1-3 space gutters; folds smart quotes to
@@ -223,7 +223,11 @@ end
 local function should_preserve_before(line, in_diff)
   if starts_with_code_indent(line) then return true end
   if looks_like_diff_marker(line, in_diff) then return true end
-  if line:match("^#") then return true end
+  -- ATX heading: 1+ `#` then whitespace or end-of-line. The trailing-space
+  -- requirement is load-bearing: prose that starts with `#42` (a PR/issue ref)
+  -- or `#launch` (a hashtag) is NOT a heading and must stay free to join its
+  -- wrapped continuation. `^#` alone stranded those lines as fake headings.
+  if line:match("^#+%s") or line:match("^#+$") then return true end
   if line:match("^[%-%*%+]%s") then return true end
   if line:match("^%d+%.%s") then return true end
   if line:match("^>") then return true end

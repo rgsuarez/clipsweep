@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-04
+
+### Fixed
+
+- Heading detection in `join_wraps` no longer misclassifies prose that begins with `#` followed by a non-space character. A line starting with a PR/issue reference (`#63`) or a hashtag (`#launch`) was matched by the bare `^#` rule and treated as an ATX heading, so it was stranded on its own line and its hard-wrapped continuation never folded back up into it. Detection now requires one or more `#` followed by a space (`# Heading`), or a line of only `#`; real headings are unaffected.
+- Fixtures `65_hash_ref_paragraph_wrap` (a `#NN`-led paragraph joins its wrap), `66_hashtag_line_wrap` (a `#hashtag`-led line joins its wrap), and `67_bare_hashes_preserved` (a line of only `#` stays a standalone marker). Total fixture count: 67.
+
 ## [0.4.0] - 2026-06-01
 
 ### Added

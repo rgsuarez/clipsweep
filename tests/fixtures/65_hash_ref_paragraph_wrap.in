@@ -1,0 +1,3 @@
+#42 looks mechanically sound, but a few things should be settled before
+release: failure handling, honest status rows, and the footer test so the
+tracker does not close early.
